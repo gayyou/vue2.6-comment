@@ -17,3 +17,5 @@ let a =new Vue({
 })
 
 a.a.b.splice(1, 2, 3);
+
+a.a.b.push(1);
