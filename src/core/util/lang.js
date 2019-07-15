@@ -37,6 +37,7 @@ export function parsePath (path: string): any {
   }
   const segments = path.split('.')
   return function (obj) {
+    // 这个函数返回一个函数，这个函数执行时候返回这个路径所指向的对象
     for (let i = 0; i < segments.length; i++) {
       if (!obj) return
       obj = obj[segments[i]]

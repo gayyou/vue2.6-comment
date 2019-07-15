@@ -1,16 +1,16 @@
 /* @flow */
 
 export default class VNode {
-  tag: string | void;
+  tag: string | void;   // 标签
   data: VNodeData | void;
   children: ?Array<VNode>;
   text: string | void;
   elm: Node | void;
   ns: string | void;
-  context: Component | void; // rendered in this component's scope
+  context: Component | void; // rendered in this component's scope   // 上下文
   key: string | number | void;
   componentOptions: VNodeComponentOptions | void;
-  componentInstance: Component | void; // component instance
+  componentInstance: Component | void; // component instance      // 组件实例
   parent: VNode | void; // component placeholder node
 
   // strictly internal
@@ -71,6 +71,7 @@ export default class VNode {
   }
 }
 
+// 创建一个虚拟的空的VNode
 export const createEmptyVNode = (text: string = '') => {
   const node = new VNode()
   node.text = text

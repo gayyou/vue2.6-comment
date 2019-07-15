@@ -66,7 +66,7 @@ export function initMixin (Vue: Class<Component>) {
     }
 
     if (vm.$options.el) {
-      vm.$mount(vm.$options.el)
+      vm.$mount(vm.$options.el)    // 执行vm的$mouted函数，而这个mouted函数则是由运行时候的vuemouted版本和完整版时候的mouted版本组成
     }
   }
 }

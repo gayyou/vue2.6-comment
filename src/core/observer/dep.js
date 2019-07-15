@@ -36,7 +36,7 @@ export default class Dep {
 
   notify () {
     // stabilize the subscriber list first
-    const subs = this.subs.slice()
+    const subs = this.subs.slice()    // 拷贝subs依赖
     if (process.env.NODE_ENV !== 'production' && !config.async) {
       // subs aren't sorted in scheduler if not running async
       // we need to sort them now to make sure they fire in correct
@@ -44,6 +44,7 @@ export default class Dep {
       subs.sort((a, b) => a.id - b.id)
     }
     for (let i = 0, l = subs.length; i < l; i++) {
+      // 将依赖进行更新操作（依赖就是watcher）
       subs[i].update()
     }
   }

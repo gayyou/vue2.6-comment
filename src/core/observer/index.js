@@ -180,6 +180,7 @@ export function defineReactive (
         if (childOb) {
           childOb.dep.depend()
           if (Array.isArray(value)) {
+            // 对数组进行深度遍历添加依赖
             dependArray(value)
           }
         }
@@ -189,22 +190,28 @@ export function defineReactive (
     set: function reactiveSetter (newVal) {
       const value = getter ? getter.call(obj) : val
       /* eslint-disable no-self-compare */
+      // 进行判断值有没有发生改变，如果没有发生改变的话说明不需要进行触发依赖
+      // 其中newVal !== newVal && value !== value 是为了检测NaN
       if (newVal === value || (newVal !== newVal && value !== value)) {
         return
       }
       /* eslint-enable no-self-compare */
       if (process.env.NODE_ENV !== 'production' && customSetter) {
+        // 进行用户传入的设置
         customSetter()
       }
       // #7981: for accessor properties without setter
-      if (getter && !setter) return
+      if (getter && !setter) return   // 如果一个对象具有缓存的getter方法但是没有缓存的setter方法的时候，不会接着往下执行
       if (setter) {
+        // 进行执行原本的setter方法
         setter.call(obj, newVal)
       } else {
+        // 没有缓存的setter方法的时候，不会进行任何操作
         val = newVal
       }
+      // 如果是深度观测的话，那么会进行深度观测对象
       childOb = !shallow && observe(newVal)
-      dep.notify()
+      dep.notify()  // 触发观察者对象
     }
   })
 }
@@ -280,6 +287,7 @@ export function del (target: Array<any> | Object, key: any) {
 /**
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
+ * 深度递归遍历数组进行添加依赖
  */
 function dependArray (value: Array<any>) {
   for (let e, i = 0, l = value.length; i < l; i++) {

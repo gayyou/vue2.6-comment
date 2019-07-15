@@ -35,6 +35,7 @@ export function initLifecycle (vm: Component) {
   // locate first non-abstract parent
   let parent = options.parent
   if (parent && !options.abstract) {
+    // 寻找最近的一个非抽象化的父亲组件
     while (parent.$options.abstract && parent.$parent) {
       parent = parent.$parent
     }
@@ -47,7 +48,7 @@ export function initLifecycle (vm: Component) {
   vm.$children = []
   vm.$refs = {}
 
-  vm._watcher = null
+  vm._watcher = null    // 初始化观察者
   vm._inactive = null
   vm._directInactive = false
   vm._isMounted = false
@@ -144,10 +145,12 @@ export function mountComponent (
   hydrating?: boolean
 ): Component {
   vm.$el = el
+  // 如果渲染函数不存在的话，进行里面的操作
   if (!vm.$options.render) {
-    vm.$options.render = createEmptyVNode
+    vm.$options.render = createEmptyVNode  // 将vm的配置项中的render函数赋值为一个创建空的VNode的方法
     if (process.env.NODE_ENV !== 'production') {
       /* istanbul ignore if */
+      // 进行判断非生产环境的时候，合并后的选项的模板是否存在
       if ((vm.$options.template && vm.$options.template.charAt(0) !== '#') ||
         vm.$options.el || el) {
         warn(
@@ -164,11 +167,12 @@ export function mountComponent (
       }
     }
   }
+  // vue更新了生命周期
   callHook(vm, 'beforeMount')
-
   let updateComponent
   /* istanbul ignore if */
   if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
+    // 生产环境下，
     updateComponent = () => {
       const name = vm._name
       const id = vm._uid
@@ -176,18 +180,19 @@ export function mountComponent (
       const endTag = `vue-perf-end:${id}`
 
       mark(startTag)
-      const vnode = vm._render()
+      const vnode = vm._render()    // 将模板转为Vnode
       mark(endTag)
       measure(`vue ${name} render`, startTag, endTag)
 
       mark(startTag)
-      vm._update(vnode, hydrating)
+      vm._update(vnode, hydrating)      // 将VNode转为Dom
       mark(endTag)
       measure(`vue ${name} patch`, startTag, endTag)
     }
   } else {
+    // 将跟新组件赋值bm的_update函数
     updateComponent = () => {
-      vm._update(vm._render(), hydrating)
+      vm._update(vm._render(), hydrating)   // update是将虚拟VNode转为Dom
     }
   }
 
@@ -200,12 +205,13 @@ export function mountComponent (
         callHook(vm, 'beforeUpdate')
       }
     }
-  }, true /* isRenderWatcher */)
+  }, true /* isRenderWatcher */)  // 创建观察者
   hydrating = false
 
   // manually mounted instance, call mounted on self
   // mounted is called for render-created child components in its inserted hook
   if (vm.$vnode == null) {
+    // 如果vnode是空的话，进行实例状态的改变
     vm._isMounted = true
     callHook(vm, 'mounted')
   }

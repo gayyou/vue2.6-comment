@@ -43,44 +43,59 @@ export default class Watcher {
   value: any;
 
   constructor (
-    vm: Component,
-    expOrFn: string | Function,
-    cb: Function,
-    options?: ?Object,
-    isRenderWatcher?: boolean
+    vm: Component,  // vm实例对象
+    expOrFn: string | Function,   // 要观察的对象的路径或者被观察的函数
+    cb: Function,   // 回调函数
+    options?: ?Object,  // 传递给观察者的选项
+    isRenderWatcher?: boolean // 是否是渲染函数的观察者
   ) {
-    this.vm = vm
+    this.vm = vm    // 将vm实例和watcher进行捆绑
     if (isRenderWatcher) {
-      vm._watcher = this
+      vm._watcher = this  // 如果是渲染函数的观察者，那么就将vm的watcher设置为这个观察者对象
     }
-    vm._watchers.push(this)
+    vm._watchers.push(this)   // 推进vm的观察者列表
     // options
     if (options) {
-      this.deep = !!options.deep
-      this.user = !!options.user
-      this.lazy = !!options.lazy
-      this.sync = !!options.sync
-      this.before = options.before
+      // 用两个!!的原因很简单，如果是undefined的话，!!运算后就是false
+      this.deep = !!options.deep    // 这个选项中是否要被深度观测
+      this.user = !!options.user    // 用来标识当前观察者实例对象是 开发者定义的 还是 内部定义的
+      this.lazy = !!options.lazy    // 是否进行懒加载
+      this.sync = !!options.sync    // 是否是异步
+      this.before = options.before  // 在数据变化之后，触发更新之前，进行执行该函数
     } else {
+      // 如果没有传入options的话，那么就全都设为false
       this.deep = this.user = this.lazy = this.sync = false
     }
-    this.cb = cb
-    this.id = ++uid // uid for batching
-    this.active = true
+    this.cb = cb    // 缓存回调函数
+    this.id = ++uid // uid for batching  记录观察者id
+    this.active = true    // 是否是激活状态
     this.dirty = this.lazy // for lazy watchers
+    /**
+     * @description 这四个属性的设立是有目的的
+     * 简介：deps是检测到setter方法进行执行的依赖筐，就是这个观察者所具有的的依赖
+     * newDeps是存放通过getter方法引入的暂时的依赖以及通过remove删除的依赖
+     *
+     * @type {Array} deps 旧的依赖筐，存放数组的依赖筐
+     * @type {Array} newDeps 新的依赖筐
+     * @type {Set} depIds 存放旧的依赖筐中具有的依赖的id
+     * @type {Set} newDepIds 存放新的依赖筐中具有的依赖的id
+     */
     this.deps = []
     this.newDeps = []
-    this.depIds = new Set()
+    this.depIds = new Set()   // 散列表
     this.newDepIds = new Set()
     this.expression = process.env.NODE_ENV !== 'production'
       ? expOrFn.toString()
       : ''
     // parse expression for getter
     if (typeof expOrFn === 'function') {
+      // 如果要观察的对象是一个函数，那么直接将getter设为这个函数
       this.getter = expOrFn
     } else {
-      this.getter = parsePath(expOrFn)
+      // 此时要观察的是一个对象的属性
+      this.getter = parsePath(expOrFn) // 将对象的属性进行解析（这个是一个字符串，要将字符串解析为一个对象的索引路径（封装成一个函数，调用的时候返回这个对象的指针），并且赋值给getter）
       if (!this.getter) {
+        // getter不存在的话，先赋值为空，并且在非生产环境下报错
         this.getter = noop
         process.env.NODE_ENV !== 'production' && warn(
           `Failed watching path: "${expOrFn}" ` +
@@ -90,7 +105,7 @@ export default class Watcher {
         )
       }
     }
-    this.value = this.lazy
+    this.value = this.lazy      // 如果是一个计算属性的话，那么就返回undefined（惰性求值），否则调用get方法
       ? undefined
       : this.get()
   }
@@ -103,9 +118,10 @@ export default class Watcher {
     let value
     const vm = this.vm
     try {
-      value = this.getter.call(vm, vm)
+      value = this.getter.call(vm, vm)    // 执行getter方法，前面无论是function类型的还是obj类型的观测者对象都会被封装成函数，在这里进行调用
     } catch (e) {
       if (this.user) {
+        // 报错
         handleError(e, vm, `getter for watcher "${this.expression}"`)
       } else {
         throw e
@@ -114,9 +130,11 @@ export default class Watcher {
       // "touch" every property so they are all tracked as
       // dependencies for deep watching
       if (this.deep) {
+        // 是否是深度观察，如果是的话就将这个深度观察进行遍历来让这个对象的所有子项都添加了依赖
         traverse(value)
       }
       popTarget()
+      // 添加完依赖后，要交换一下进行更新deps框
       this.cleanupDeps()
     }
     return value
@@ -128,9 +146,12 @@ export default class Watcher {
   addDep (dep: Dep) {
     const id = dep.id
     if (!this.newDepIds.has(id)) {
+      // 如果这个依赖的框并不在newDepIds里面，那么就进行添加到散列表中，
+      // 并且在依赖村放放的框进行添加，如果有的话就不进行添加，这是避免依赖的重复添加
       this.newDepIds.add(id)
       this.newDeps.push(dep)
       if (!this.depIds.has(id)) {
+        // 这是进行添加依赖
         dep.addSub(this)
       }
     }
@@ -138,19 +159,25 @@ export default class Watcher {
 
   /**
    * Clean up for dependency collection.
+   * 这个方法的思路很简单，将deps有的项但是newDeps没有的项从deps进行删除。
    */
   cleanupDeps () {
     let i = this.deps.length
     while (i--) {
+      // 这一个是进行更新将旧的依赖框数组进行更新
       const dep = this.deps[i]
       if (!this.newDepIds.has(dep.id)) {
+        // 遍历旧的deps，如果筐中存在的id在新的筐中不存在的话，进行从dep的依赖中删除，如果在newDepIds中不存在的id，则进行删除
         dep.removeSub(this)
+        console.log(dep);
       }
     }
+    // 将newDepId和depId进行交换，从而避免申请新的内存，先进行id散列表的交换
     let tmp = this.depIds
     this.depIds = this.newDepIds
     this.newDepIds = tmp
-    this.newDepIds.clear()
+    this.newDepIds.clear()  // 将newDepIds散列表进行清空。
+    // 进行依赖框的交换
     tmp = this.deps
     this.deps = this.newDeps
     this.newDeps = tmp
@@ -160,14 +187,18 @@ export default class Watcher {
   /**
    * Subscriber interface.
    * Will be called when a dependency changes.
+   * 进行依赖的更新
    */
   update () {
     /* istanbul ignore else */
     if (this.lazy) {
+      /// 如果懒加载存在的话，dirty属性为true
       this.dirty = true
     } else if (this.sync) {
+      // 如果是异步加载的话，执行run函数
       this.run()
     } else {
+      // 先进行观察者的推进，然后根据生命周期进行观察者的执行
       queueWatcher(this)
     }
   }
@@ -175,23 +206,29 @@ export default class Watcher {
   /**
    * Scheduler job interface.
    * Will be called by the scheduler.
+   * 被schduler进行调用
    */
   run () {
     if (this.active) {
-      const value = this.get()
+      const value = this.get()   // 执行getter方法，并且添加依赖后将返回值存留下来
       if (
+        // 这个值发生了改变
         value !== this.value ||
         // Deep watchers and watchers on Object/Arrays should fire even
         // when the value is the same, because the value may
         // have mutated.
+        // 深度遍历还有对象或者数组具有突发性(其实是对象的时候，这个对象的指针是不会发生改变的，但是这个对象的属性是会发生改变的)，所以要进行调用
         isObject(value) ||
         this.deep
       ) {
         // set new value
+        // 缓存旧的值并设置新的值
         const oldValue = this.value
         this.value = value
         if (this.user) {
+          // 如果是用户自定义的属性的话，要进行检验是否错误，vue框架自带的是不会出现异常的
           try {
+            // watcher的将回调函数进行执行
             this.cb.call(this.vm, value, oldValue)
           } catch (e) {
             handleError(e, this.vm, `callback for watcher "${this.expression}"`)
@@ -214,6 +251,7 @@ export default class Watcher {
 
   /**
    * Depend on all deps collected by this watcher.
+   * 触发的时候是将deps框进行触发，而新添加依赖是放在newDeps数组中
    */
   depend () {
     let i = this.deps.length
@@ -224,19 +262,24 @@ export default class Watcher {
 
   /**
    * Remove self from all dependencies' subscriber list.
+   * 在vue对象的消亡阶段，对watcher的所有依赖者进行解除依赖
    */
   teardown () {
     if (this.active) {
+      // watcher初始化的时候是活跃的，如果是活跃的说明没有死亡
       // remove self from vm's watcher list
       // this is a somewhat expensive operation so we skip it
       // if the vm is being destroyed.
       if (!this.vm._isBeingDestroyed) {
+        // 移除vm的watcher挂载
         remove(this.vm._watchers, this)
       }
       let i = this.deps.length
       while (i--) {
+        // 移除所有依赖
         this.deps[i].removeSub(this)
       }
+      // 改变状态
       this.active = false
     }
   }

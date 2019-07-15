@@ -38,8 +38,10 @@ Vue.prototype.$mount = function (
   el?: string | Element,
   hydrating?: boolean
 ): Component {
+  // 判断这个元素是否存在并且这个环境是否在浏览器的环境中
+  // 判断是否是在浏览器中是因为vue是可以进行服务器渲染的。
   el = el && inBrowser ? query(el) : undefined
-  return mountComponent(this, el, hydrating)
+  return mountComponent(this, el, hydrating)   // 返回挂载组件的函数执行结果
 }
 
 // devtools global hook

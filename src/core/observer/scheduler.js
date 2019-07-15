@@ -24,14 +24,15 @@ let index = 0
 
 /**
  * Reset the scheduler's state.
+ * 重置历程状态
  */
 function resetSchedulerState () {
-  index = queue.length = activatedChildren.length = 0
-  has = {}
+  index = queue.length = activatedChildren.length = 0  // 将列表的状态进行重置
+  has = {}  // 将has进行重置
   if (process.env.NODE_ENV !== 'production') {
     circular = {}
   }
-  waiting = flushing = false
+  waiting = flushing = false  // 将队列的状态进行重置
 }
 
 // Async edge case #6566 requires saving the timestamp when event listeners are
@@ -69,30 +70,32 @@ if (inBrowser && !isIE) {
  * Flush both queues and run the watchers.
  */
 function flushSchedulerQueue () {
-  currentFlushTimestamp = getNow()
-  flushing = true
+  currentFlushTimestamp = getNow()  // 获得当前时间
+  flushing = true   // 调整状态，正在一个一个执行队列
   let watcher, id
 
   // Sort queue before flush.
   // This ensures that:
   // 1. Components are updated from parent to child. (because parent is always
-  //    created before the child)
+  //    created before the child)  父组件总是先于子组件进行更新，因为父组件总是比子组件先创建
   // 2. A component's user watchers are run before its render watcher (because
-  //    user watchers are created before the render watcher)
+  //    user watchers are created before the render watcher)  组件的自定义的watcher（computed、watch属性都会比render的监听者先更新）
   // 3. If a component is destroyed during a parent component's watcher run,
-  //    its watchers can be skipped.
+  //    its watchers can be skipped.  父组件的观察者正在观察子组件，但是子组件销毁了，那么这个观察者就会被跳过
+  // 在清空队列的时候先进行排序
   queue.sort((a, b) => a.id - b.id)
 
-  // do not cache length because more watchers might be pushed
+  // do not cache length because more watchers might be pushed    这里强调不会先缓存这个队列，因为队列随时会增加
   // as we run existing watchers
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index]
     if (watcher.before) {
+      // 到目前为止只有渲染函数的观察者带有这个参数，这个参数是进行修改vm的状态为beforUpdate
       watcher.before()
     }
     id = watcher.id
     has[id] = null
-    watcher.run()
+    watcher.run()   // 进行执行依赖的回调函数
     // in dev build, check and stop circular updates.
     if (process.env.NODE_ENV !== 'production' && has[id] != null) {
       circular[id] = (circular[id] || 0) + 1
@@ -113,16 +116,18 @@ function flushSchedulerQueue () {
   // keep copies of post queues before resetting state
   const activatedQueue = activatedChildren.slice()
   const updatedQueue = queue.slice()
+  // 在重新设置state之前进行拷贝数组
 
-  resetSchedulerState()
+  resetSchedulerState()   // 重置状态，将waiting、flushing重置，并且将已经执行过的watcher对象散列表进行重置
 
   // call component updated and activated hooks
-  callActivatedHooks(activatedQueue)
-  callUpdatedHooks(updatedQueue)
+  callActivatedHooks(activatedQueue)    // 回调组件活跃钩子
+  callUpdatedHooks(updatedQueue)      // 回调update状态钩子
 
   // devtool hook
   /* istanbul ignore if */
   if (devtools && config.devtools) {
+    // 工具的钩子进行回调
     devtools.emit('flush')
   }
 }
@@ -160,12 +165,15 @@ function callActivatedHooks (queue) {
  * Push a watcher into the watcher queue.
  * Jobs with duplicate IDs will be skipped unless it's
  * pushed when the queue is being flushed.
+ * 將觀察者推入觀察者隊列。这个队列在工作的时候是没有相同的两个id存在的除非这个队列正在被清除（也就是出队操作）
  */
 export function queueWatcher (watcher: Watcher) {
   const id = watcher.id
   if (has[id] == null) {
     has[id] = true
     if (!flushing) {
+      // 如果是正在flush队列的时候，不会进行id的检测
+      // （这是因为清除队列的时候相同的id很有可能被清除，如果进行防止重复操作的话，那么可能下次就不会监听某个对象）
       queue.push(watcher)
     } else {
       // if already flushing, splice the watcher based on its id
@@ -181,9 +189,11 @@ export function queueWatcher (watcher: Watcher) {
       waiting = true
 
       if (process.env.NODE_ENV !== 'production' && !config.async) {
+        // 在非生产环境下并且是同步操作的时候会进行刷新队列
         flushSchedulerQueue()
         return
       }
+      // 等待下一个tick的时候进行刷新生命周期
       nextTick(flushSchedulerQueue)
     }
   }
