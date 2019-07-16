@@ -133,6 +133,7 @@ const builds = {
   'web-full-dev': {
     entry: resolve('web/entry-runtime-with-compiler.js'),
     dest: resolve('dist/vue.js'),
+    devtool: 'inline-source-map',
     format: 'umd',
     env: 'development',
     alias: {

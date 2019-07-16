@@ -169,6 +169,7 @@ export function defineReactive (
   }
 
   let childOb = !shallow && observe(val)   // 当并非浅观测并且val存在值的话，进行递归观测。
+
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
@@ -176,6 +177,8 @@ export function defineReactive (
       const value = getter ? getter.call(obj) : val   // 得到之前缓存的值
       if (Dep.target) {
         // target是Dep的静态属性，这个属性的说明是：正在观测中对象，可以到observe/watcher中的get方法查看，代表这个执行这个函数的一个对象，这个getter就是那边触发的
+        // 这个如果没有观测者的话，指向的就是渲染函数
+        // console.log(obj, key, Dep.target);
         dep.depend()
         if (childOb) {
           childOb.dep.depend()

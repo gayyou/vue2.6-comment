@@ -53,6 +53,9 @@ export default class Dep {
 // The current target watcher being evaluated.
 // This is globally unique because only one watcher
 // can be evaluated at a time.
+// 这个的目的在一次依赖的添加过程中，就是在调用一个对象的getter方法的时候
+// 会将这个Dep.target指向被观察的__ob__属性上的dep
+// 然后
 Dep.target = null
 const targetStack = []
 
@@ -62,6 +65,8 @@ export function pushTarget (target: ?Watcher) {
 }
 
 export function popTarget () {
+  // 将target指向栈顶的那个，然后出栈
   targetStack.pop()
+  console.log('弹出了')
   Dep.target = targetStack[targetStack.length - 1]
 }

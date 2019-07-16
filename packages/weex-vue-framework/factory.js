@@ -3168,7 +3168,7 @@ Watcher.prototype.addDep = function addDep (dep) {
  * Clean up for dependency collection.
  */
 Watcher.prototype.cleanupDeps = function cleanupDeps () {
-    var this$1 = this;
+  var this$1 = this;
 
   var i = this.deps.length;
   while (i--) {

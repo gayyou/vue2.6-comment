@@ -74,7 +74,7 @@ export default class Watcher {
      * @description 这四个属性的设立是有目的的
      * 简介：deps是检测到setter方法进行执行的依赖筐，就是这个观察者所具有的的依赖
      * newDeps是存放通过getter方法引入的暂时的依赖以及通过remove删除的依赖
-     *
+     * 我的猜想是这些deps或者depsid都是本观察者所在的dep
      * @type {Array} deps 旧的依赖筐，存放数组的依赖筐
      * @type {Array} newDeps 新的依赖筐
      * @type {Set} depIds 存放旧的依赖筐中具有的依赖的id
@@ -93,7 +93,10 @@ export default class Watcher {
       this.getter = expOrFn
     } else {
       // 此时要观察的是一个对象的属性
-      this.getter = parsePath(expOrFn) // 将对象的属性进行解析（这个是一个字符串，要将字符串解析为一个对象的索引路径（封装成一个函数，调用的时候返回这个对象的指针），并且赋值给getter）
+      // 将对象的属性进行解析（这个是一个字符串，要将字符串解析为一个对象的索引路径
+      // （封装成一个函数，调用的时候返回这个对象的指针），并且赋值给getter）
+      // 然后执行这个函数就相当于调用了相应对象属性的getter方法，从而实现依赖的添加
+      this.getter = parsePath(expOrFn)
       if (!this.getter) {
         // getter不存在的话，先赋值为空，并且在非生产环境下报错
         this.getter = noop
@@ -112,12 +115,16 @@ export default class Watcher {
 
   /**
    * Evaluate the getter, and re-collect dependencies.
+   * 通过执行这个方法，对象属性的依赖进行添加
+   * 在这里通过将本watcher进行推进到target的stack中，然后在本观察者的观察对象进行getter方法的调用收集依赖的时候进行收集依赖
    */
   get () {
+    // debugger
     pushTarget(this)
     let value
     const vm = this.vm
     try {
+      // 触发依赖的搜集
       value = this.getter.call(vm, vm)    // 执行getter方法，前面无论是function类型的还是obj类型的观测者对象都会被封装成函数，在这里进行调用
     } catch (e) {
       if (this.user) {
@@ -135,6 +142,7 @@ export default class Watcher {
       }
       popTarget()
       // 添加完依赖后，要交换一下进行更新deps框
+      // 进行清空临时的依赖筐
       this.cleanupDeps()
     }
     return value
@@ -142,6 +150,7 @@ export default class Watcher {
 
   /**
    * Add a dependency to this directive.
+   * 这个addDep要和cleanupDeps一起看
    */
   addDep (dep: Dep) {
     const id = dep.id
@@ -151,7 +160,7 @@ export default class Watcher {
       this.newDepIds.add(id)
       this.newDeps.push(dep)
       if (!this.depIds.has(id)) {
-        // 这是进行添加依赖
+        // 如果这个id并不在depIds里面，也就是之前没有添加过的，那么要在这个属性的依赖筐中进行添加本观察者
         dep.addSub(this)
       }
     }
@@ -168,8 +177,8 @@ export default class Watcher {
       const dep = this.deps[i]
       if (!this.newDepIds.has(dep.id)) {
         // 遍历旧的deps，如果筐中存在的id在新的筐中不存在的话，进行从dep的依赖中删除，如果在newDepIds中不存在的id，则进行删除
+        //
         dep.removeSub(this)
-        console.log(dep);
       }
     }
     // 将newDepId和depId进行交换，从而避免申请新的内存，先进行id散列表的交换
@@ -192,7 +201,7 @@ export default class Watcher {
   update () {
     /* istanbul ignore else */
     if (this.lazy) {
-      /// 如果懒加载存在的话，dirty属性为true
+      /// 如果懒加载存在的话，dirty属性为true（旧版代码里面是computed属性）
       this.dirty = true
     } else if (this.sync) {
       // 如果是异步加载的话，执行run函数
@@ -210,7 +219,7 @@ export default class Watcher {
    */
   run () {
     if (this.active) {
-      const value = this.get()   // 执行getter方法，并且添加依赖后将返回值存留下来
+      const value = this.get()   // 执行getter方法，并且添加依赖后将返回值存留下来，并且触发搜集依赖
       if (
         // 这个值发生了改变
         value !== this.value ||
@@ -251,7 +260,7 @@ export default class Watcher {
 
   /**
    * Depend on all deps collected by this watcher.
-   * 触发的时候是将deps框进行触发，而新添加依赖是放在newDeps数组中
+   * 触发的时候是将deps筐内的watcher进行逐一触发回调函数
    */
   depend () {
     let i = this.deps.length

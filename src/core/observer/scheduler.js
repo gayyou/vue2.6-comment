@@ -122,7 +122,7 @@ function flushSchedulerQueue () {
 
   // call component updated and activated hooks
   callActivatedHooks(activatedQueue)    // 回调组件活跃钩子
-  callUpdatedHooks(updatedQueue)      // 回调update状态钩子
+  callUpdatedHooks(updatedQueue)      // 回调update状态钩子，将状态改为updated 表示数据更新完毕
 
   // devtool hook
   /* istanbul ignore if */
@@ -170,22 +170,26 @@ function callActivatedHooks (queue) {
 export function queueWatcher (watcher: Watcher) {
   const id = watcher.id
   if (has[id] == null) {
+    // 表示这个观察者还没有在本次观察队列周期中被推进队列中
     has[id] = true
+    // console.log(queue)
     if (!flushing) {
-      // 如果是正在flush队列的时候，不会进行id的检测
-      // （这是因为清除队列的时候相同的id很有可能被清除，如果进行防止重复操作的话，那么可能下次就不会监听某个对象）
+      // 并非在清除队列的状态，那么就直接推进观察执行队列
       queue.push(watcher)
     } else {
       // if already flushing, splice the watcher based on its id
       // if already past its id, it will be run next immediately.
+      // 如果是在正在清除执行队列的话，
       let i = queue.length - 1
       while (i > index && queue[i].id > watcher.id) {
         i--
       }
+      // 这几行的代码的意思就是找到这个观察者的合适位置并进行数组的插入
       queue.splice(i + 1, 0, watcher)
     }
     // queue the flush
     if (!waiting) {
+      // 如果队列处于刚刚开始一个执行周期的话，那么会进行调用下个tick进行执行，这样子的原因就是搜集足够多的watcher放到队列中
       waiting = true
 
       if (process.env.NODE_ENV !== 'production' && !config.async) {

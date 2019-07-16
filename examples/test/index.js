@@ -1,27 +1,40 @@
-let a =new Vue({
-  template: '<span v-once>这个将不会改变: {{  }}{{  }}</span>',
+window.num = 0
+let a = new Vue({
+  template: '<span>这个将不会改变: {{ a.name }}{{ c }}</span>',
   el: '#app',
   data() {
     return {
+      c: '123',
       a: {
-        b: [
-          1, 2, 3, 4
-        ],
-        c: {}
+        name: '123',
+        age: 123
+      },
+      b: {
+        age: 321
       }
     }
   },
   watch: {
-    a() {
-        console.log(123) 
-      }
+    'a.name'() {
+
+    }
   },
   computed: {
 
   },
   mounted() {
-    console.log(this.a.__ob__)
+    this.c = this.a;
+    this.c.name = '1233333';
   }
 })
 
-// console.log(a.$options);
+function dd() {
+  a.a.name = '123'
+  setTimeout(() => {
+    a.$nextTick(() => {
+      a.b.age = '123'
+    })
+  }, 100)
+  // 对于在模板上显示的值，在渲染函数中
+}
+
