@@ -1,6 +1,6 @@
-window.num = 0
+
 let a = new Vue({
-  template: '<span>这个将不会改变: {{ a.name }}{{ c }}</span>',
+  template: '<span>这个将不会改变: {{ getCount }}</span>',
   el: '#app',
   data() {
     return {
@@ -11,30 +11,20 @@ let a = new Vue({
       },
       b: {
         age: 321
-      }
+      },
     }
   },
   watch: {
-    'a.name'() {
 
-    }
   },
   computed: {
-
+    getCount() {
+      let i = 1;
+      return this.b.age + i;
+    }
   },
   mounted() {
-    this.c = this.a;
-    this.c.name = '1233333';
+    this.a.name = 1
+
   }
 })
-
-function dd() {
-  a.a.name = '123'
-  setTimeout(() => {
-    a.$nextTick(() => {
-      a.b.age = '123'
-    })
-  }, 100)
-  // 对于在模板上显示的值，在渲染函数中
-}
-

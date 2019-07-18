@@ -119,7 +119,7 @@ export default class Watcher {
    * 在这里通过将本watcher进行推进到target的stack中，然后在本观察者的观察对象进行getter方法的调用收集依赖的时候进行收集依赖
    */
   get () {
-    // debugger
+    debugger
     pushTarget(this)
     let value
     const vm = this.vm
@@ -137,7 +137,7 @@ export default class Watcher {
       // "touch" every property so they are all tracked as
       // dependencies for deep watching
       if (this.deep) {
-        // 是否是深度观察，如果是的话就将这个深度观察进行遍历来让这个对象的所有子项都添加了依赖
+        // 是否是深度观察，如果是的话就将这个深度观察进行遍历触发getter方法来让这个对象的所有子项都添加了依赖
         traverse(value)
       }
       popTarget()
@@ -177,7 +177,7 @@ export default class Watcher {
       const dep = this.deps[i]
       if (!this.newDepIds.has(dep.id)) {
         // 遍历旧的deps，如果筐中存在的id在新的筐中不存在的话，进行从dep的依赖中删除，如果在newDepIds中不存在的id，则进行删除
-        //
+        // 互相删除
         dep.removeSub(this)
       }
     }
@@ -226,7 +226,7 @@ export default class Watcher {
         // Deep watchers and watchers on Object/Arrays should fire even
         // when the value is the same, because the value may
         // have mutated.
-        // 深度遍历还有对象或者数组具有突发性(其实是对象的时候，这个对象的指针是不会发生改变的，但是这个对象的属性是会发生改变的)，所以要进行调用
+        // 如果是对象的话，那么引用的值永远是相等的，所以要进行判断。
         isObject(value) ||
         this.deep
       ) {

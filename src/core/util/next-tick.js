@@ -10,6 +10,7 @@ export let isUsingMicroTask = false
 const callbacks = []
 let pending = false
 
+// 执行回调
 function flushCallbacks () {
   pending = false
   const copies = callbacks.slice(0)
@@ -40,6 +41,9 @@ let timerFunc
 // Promise is available, we will use it:
 /* istanbul ignore next, $flow-disable-line */
 if (typeof Promise !== 'undefined' && isNative(Promise)) {
+  // 这里使用Promise对象的目的就是利用宏观任务队列和微观任务队列的原理
+  // Promise在浏览器是一个非常好的选择，因为它是一个微任务，在一次事件循环中可以
+  // 执行多个微任务
   const p = Promise.resolve()
   timerFunc = () => {
     p.then(flushCallbacks)
@@ -48,8 +52,10 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
     // microtask queue but the queue isn't being flushed, until the browser
     // needs to do some other work, e.g. handle a timer. Therefore we can
     // "force" the microtask queue to be flushed by adding an empty timer.
+    // 在IOS系统中出现bug，需要这么处理
     if (isIOS) setTimeout(noop)
   }
+  // 使用微任务为true
   isUsingMicroTask = true
 } else if (!isIE && typeof MutationObserver !== 'undefined' && (
   isNative(MutationObserver) ||
@@ -59,21 +65,25 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
   // Use MutationObserver where native Promise is not available,
   // e.g. PhantomJS, iOS7, Android 4.4
   // (#6466 MutationObserver is unreliable in IE11)
+  // 当浏览器没有原生的Promise的时候，就采用MutationObserver
   let counter = 1
-  const observer = new MutationObserver(flushCallbacks)
+  const observer = new MutationObserver(flushCallbacks)  // 这个MutationObserver的作用就是是设定某个dom发生改变的时候，这样就回调flushCallbacks
   const textNode = document.createTextNode(String(counter))
+  // 观察这个textNode
   observer.observe(textNode, {
     characterData: true
   })
+  // 当执行timerFunc函数的时候，textNode会进行变化，就会触发observer的观察，从而触发flushCallbacks
   timerFunc = () => {
     counter = (counter + 1) % 2
     textNode.data = String(counter)
   }
-  isUsingMicroTask = true
+  isUsingMicroTask = true  // 这个是一个微任务
 } else if (typeof setImmediate !== 'undefined' && isNative(setImmediate)) {
   // Fallback to setImmediate.
   // Techinically it leverages the (macro) task queue,
   // but it is still a better choice than setTimeout.
+  // 使用serImmediate
   timerFunc = () => {
     setImmediate(flushCallbacks)
   }

@@ -67,6 +67,6 @@ export function pushTarget (target: ?Watcher) {
 export function popTarget () {
   // 将target指向栈顶的那个，然后出栈
   targetStack.pop()
-  console.log('弹出了')
   Dep.target = targetStack[targetStack.length - 1]
+  console.log(Dep.target);
 }

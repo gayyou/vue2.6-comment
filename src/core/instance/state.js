@@ -172,13 +172,14 @@ const computedWatcherOptions = { lazy: true }
 
 function initComputed (vm: Component, computed: Object) {
   // $flow-disable-line
-  const watchers = vm._computedWatchers = Object.create(null)
+  const watchers = vm._computedWatchers = Object.create(null)  // 对vm的计算观察者进行定义
   // computed properties are just getters during SSR
   const isSSR = isServerRendering()
 
   for (const key in computed) {
+    console.log(key)
     const userDef = computed[key]
-    const getter = typeof userDef === 'function' ? userDef : userDef.get
+    const getter = typeof userDef === 'function' ? userDef : userDef.get  // 获取计算目标的getter方法
     if (process.env.NODE_ENV !== 'production' && getter == null) {
       warn(
         `Getter is missing for computed property "${key}".`,
@@ -188,6 +189,7 @@ function initComputed (vm: Component, computed: Object) {
 
     if (!isSSR) {
       // create internal watcher for the computed property.
+      // 创建观察者对象
       watchers[key] = new Watcher(
         vm,
         getter || noop,
@@ -200,8 +202,10 @@ function initComputed (vm: Component, computed: Object) {
     // component prototype. We only need to define computed properties defined
     // at instantiation here.
     if (!(key in vm)) {
+      // 如果这个对象并不是vm的属性的话，进行定义计算属性
       defineComputed(vm, key, userDef)
     } else if (process.env.NODE_ENV !== 'production') {
+      // 如果这个key是定义在vm中，进行报错
       if (key in vm.$data) {
         warn(`The computed property "${key}" is already defined in data.`, vm)
       } else if (vm.$options.props && key in vm.$options.props) {
@@ -211,48 +215,66 @@ function initComputed (vm: Component, computed: Object) {
   }
 }
 
+/**
+ * @description
+ * @param target
+ * @param key
+ * @param userDef
+ */
 export function defineComputed (
   target: any,
   key: string,
   userDef: Object | Function
 ) {
-  const shouldCache = !isServerRendering()
+  const shouldCache = !isServerRendering()   // 如果不是服务端渲染的话，那么就需要进行缓存
   if (typeof userDef === 'function') {
+    // sharedPropertyDefining 是一个共享的属性定义对象
+    // TODO 这里有个疑惑，就是这个sharedPropertyDefining存在的意义。为什么不直接用def来进行定义
+    // TODO 上面的解释就是这个对象是一个共享的，即大家都能用，使用它的原因是要对它进行处理
     sharedPropertyDefinition.get = shouldCache
-      ? createComputedGetter(key)
-      : createGetterInvoker(userDef)
+      ? createComputedGetter(key)  // 如果是浏览器环境下，则创造一个计算的getter方法
+      : createGetterInvoker(userDef)  // 如果是服务端渲染的话，那么就返回
     sharedPropertyDefinition.set = noop
   } else {
     sharedPropertyDefinition.get = userDef.get
-      ? shouldCache && userDef.cache !== false
-        ? createComputedGetter(key)
-        : createGetterInvoker(userDef.get)
+      ? shouldCache && userDef.cache !== false  // 在浏览器环境下并且userDef的缓存是开着的
+        ? createComputedGetter(key) // 创建计算的getter属性
+        : createGetterInvoker(userDef.get)    // 创建getter调用
       : noop
     sharedPropertyDefinition.set = userDef.set || noop
   }
   if (process.env.NODE_ENV !== 'production' &&
-      sharedPropertyDefinition.set === noop) {
-    sharedPropertyDefinition.set = function () {
-      warn(
-        `Computed property "${key}" was assigned to but it has no setter.`,
-        this
-      )
-    }
+    sharedPropertyDefinition.set === noop) {
+      sharedPropertyDefinition.set = function () {
+        warn(
+          `Computed property "${key}" was assigned to but it has no setter.`,
+          this
+        )
+      }
   }
-  Object.defineProperty(target, key, sharedPropertyDefinition)
+  Object.defineProperty(target, key, sharedPropertyDefinition)  // 对compute目标进行定义
 }
+
 
 function createComputedGetter (key) {
   return function computedGetter () {
-    const watcher = this._computedWatchers && this._computedWatchers[key]
+    const watcher = this._computedWatchers && this._computedWatchers[key]  // 获取计算观察者中这个键值的属性的观察者
     if (watcher) {
+      // 观察者存在的话，就进行判断，并且是不是计算属性，是的话就进行执行添加观察者依赖的操作
       if (watcher.dirty) {
+        // 进行观察者依赖的添加
         watcher.evaluate()
       }
       if (Dep.target) {
+        // 如果调用栈还是有Dep.target的话（很可能是一个渲染函数观察者的筐存在）
+        // TODO 为什么要有这个东西？？
+        // TODO 这个computed属性看似是一个方法，其实到最后会处理成一个
+        //  属性，当这个属性被模板征用的时候会被观察者观察到。
+        //  所以要进行依赖的添加操作。
         watcher.depend()
       }
       return watcher.value
+      // 返回值
     }
   }
 }
@@ -293,12 +315,14 @@ function initMethods (vm: Component, methods: Object) {
 
 function initWatch (vm: Component, watch: Object) {
   for (const key in watch) {
-    const handler = watch[key]
+    const handler = watch[key]  // 缓存回调函数或者数组
     if (Array.isArray(handler)) {
+      // 如果是一个数组的话就遍历进行执行
       for (let i = 0; i < handler.length; i++) {
         createWatcher(vm, key, handler[i])
       }
     } else {
+      // 进行创造watcher
       createWatcher(vm, key, handler)
     }
   }
@@ -311,13 +335,15 @@ function createWatcher (
   options?: Object
 ) {
   if (isPlainObject(handler)) {
+    // 如果这个handler是一个对象的话，那么就机械能给你格式化
     options = handler
     handler = handler.handler
   }
   if (typeof handler === 'string') {
+    // 如果handler是一个字符串的话，代表这个这个是methods里面的回调函数
     handler = vm[handler]
   }
-  return vm.$watch(expOrFn, handler, options)
+  return vm.$watch(expOrFn, handler, options)  // 进行观察并返回观察者对象
 }
 
 export function stateMixin (Vue: Class<Component>) {
@@ -325,10 +351,12 @@ export function stateMixin (Vue: Class<Component>) {
   // when using Object.defineProperty, so we have to procedurally build up
   // the object here.
   const dataDef = {}
+  // 进行代理
   dataDef.get = function () { return this._data }
   const propsDef = {}
   propsDef.get = function () { return this._props }
   if (process.env.NODE_ENV !== 'production') {
+    // 这两个值就是代理的值，是不允许对这两个变量的代理指向进行修改的
     dataDef.set = function () {
       warn(
         'Avoid replacing instance root $data. ' +
@@ -340,12 +368,14 @@ export function stateMixin (Vue: Class<Component>) {
       warn(`$props is readonly.`, this)
     }
   }
+  // 进行代理的设置
   Object.defineProperty(Vue.prototype, '$data', dataDef)
   Object.defineProperty(Vue.prototype, '$props', propsDef)
 
-  Vue.prototype.$set = set
-  Vue.prototype.$delete = del
+  Vue.prototype.$set = set // 进行代理方法
+  Vue.prototype.$delete = del  // 进行代理方法
 
+  // 定义观察者方法，并且这个方法暴露给用户
   Vue.prototype.$watch = function (
     expOrFn: string | Function,
     cb: any,
@@ -353,12 +383,16 @@ export function stateMixin (Vue: Class<Component>) {
   ): Function {
     const vm: Component = this
     if (isPlainObject(cb)) {
+      // 如果回调是一个纯对象的话，说明里面是有进行设置内容的，要去提取纯对象的内容
       return createWatcher(vm, expOrFn, cb, options)
     }
+    // 防止选项传参时候出错
     options = options || {}
-    options.user = true
+    options.user = true  //
+    // 创建watcher选项观察者
     const watcher = new Watcher(vm, expOrFn, cb, options)
     if (options.immediate) {
+      // 判断这个观察者对象的immediate属性是否存在，这个属性的意义就是在初始化的时候就进行执行一遍
       try {
         cb.call(vm, watcher.value)
       } catch (error) {
@@ -366,6 +400,7 @@ export function stateMixin (Vue: Class<Component>) {
       }
     }
     return function unwatchFn () {
+      // 返回一个解除这个观察者的选项
       watcher.teardown()
     }
   }
