@@ -68,5 +68,4 @@ export function popTarget () {
   // 将target指向栈顶的那个，然后出栈
   targetStack.pop()
   Dep.target = targetStack[targetStack.length - 1]
-  console.log(Dep.target);
 }

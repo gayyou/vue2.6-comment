@@ -75,6 +75,7 @@ export function createASTElement (
 
 /**
  * Convert HTML string to AST.
+ * 将html字符串转了AST
  */
 export function parse (
   template: string,
@@ -82,18 +83,19 @@ export function parse (
 ): ASTElement | void {
   warn = options.warn || baseWarn
 
+  // no是一个回调函数，这个函数无论传什么东西都是返回false
   platformIsPreTag = options.isPreTag || no
   platformMustUseProp = options.mustUseProp || no
   platformGetTagNamespace = options.getTagNamespace || no
   const isReservedTag = options.isReservedTag || no
   maybeComponent = (el: ASTElement) => !!el.component || !isReservedTag(el.tag)
 
+
   transforms = pluckModuleFunction(options.modules, 'transformNode')
   preTransforms = pluckModuleFunction(options.modules, 'preTransformNode')
   postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
 
   delimiters = options.delimiters
-
   const stack = []
   const preserveWhitespace = options.preserveWhitespace !== false
   const whitespaceOption = options.whitespace
@@ -110,6 +112,7 @@ export function parse (
     }
   }
 
+  // 闭合标签
   function closeElement (element) {
     trimEndingWhitespace(element)
     if (!inVPre && !element.processed) {
@@ -170,6 +173,7 @@ export function parse (
     }
   }
 
+  // 对结尾的空白节点进行去除
   function trimEndingWhitespace (el) {
     // remove trailing whitespace node
     if (!inPre) {
@@ -184,6 +188,7 @@ export function parse (
     }
   }
 
+  //
   function checkRootConstraints (el) {
     if (el.tag === 'slot' || el.tag === 'template') {
       warnOnce(
@@ -201,6 +206,7 @@ export function parse (
     }
   }
 
+  // 解析HTML
   parseHTML(template, {
     warn,
     expectHTML: options.expectHTML,
@@ -210,6 +216,14 @@ export function parse (
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
     outputSourceRange: options.outputSourceRange,
+    /**
+     *
+     * @param tag 标签名
+     * @param attrs 属性列表
+     * @param unary 是否是可以作为一元标签使用
+     * @param start 在template中起始的位置
+     * @param end  在template中终止的位置
+     */
     start (tag, attrs, unary, start, end) {
       // check namespace.
       // inherit parent ns if there is one

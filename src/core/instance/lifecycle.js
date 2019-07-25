@@ -267,6 +267,7 @@ export function updateChildComponent (
   vm.$listeners = listeners || emptyObject
 
   // update props
+  // TODO 更新props属性
   if (propsData && vm.$options.props) {
     toggleObserving(false)
     const props = vm._props
@@ -274,10 +275,11 @@ export function updateChildComponent (
     for (let i = 0; i < propKeys.length; i++) {
       const key = propKeys[i]
       const propOptions: any = vm.$options.props // wtf flow?
-      props[key] = validateProp(key, propOptions, propsData, vm)
+      props[key] = validateProp(key, propOptions, propsData, vm)  // 进行校验
     }
     toggleObserving(true)
     // keep a copy of raw propsData
+    // 在校验完毕的时候缓存上一次校验的结果，以便
     vm.$options.propsData = propsData
   }
 

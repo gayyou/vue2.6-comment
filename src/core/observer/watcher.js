@@ -119,7 +119,7 @@ export default class Watcher {
    * 在这里通过将本watcher进行推进到target的stack中，然后在本观察者的观察对象进行getter方法的调用收集依赖的时候进行收集依赖
    */
   get () {
-    debugger
+    // debugger
     pushTarget(this)
     let value
     const vm = this.vm

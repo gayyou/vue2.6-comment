@@ -37,7 +37,6 @@ Vue.prototype.$mount = function (
 
   // resolve template/el and convert to render function
   if (!options.render) {
-    console.log('render is not exist')
     // 当用户传进来的配置项不存在的时候
     let template = options.template
     if (template) {
@@ -72,7 +71,7 @@ Vue.prototype.$mount = function (
       if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
         mark('compile')
       }
-
+      // console.log('delimiters', options, options.delimiters, options.comments)
       const { render, staticRenderFns } = compileToFunctions(template, {
         outputSourceRange: process.env.NODE_ENV !== 'production',
         shouldDecodeNewlines,

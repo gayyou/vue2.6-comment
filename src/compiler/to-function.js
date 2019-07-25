@@ -22,12 +22,12 @@ export function createCompileToFunctionFn (compile: Function): Function {
   const cache = Object.create(null)
 
   return function compileToFunctions (
-    template: string,
-    options?: CompilerOptions,
+    template: string,  // 模板字符串
+    options?: CompilerOptions,  // 编译配置
     vm?: Component
   ): CompiledFunctionResult {
-    options = extend({}, options)
-    const warn = options.warn || baseWarn
+    options = extend({}, options)  // 产生继承
+    const warn = options.warn || baseWarn  // 报错函数
     delete options.warn
 
     /* istanbul ignore if */
@@ -57,9 +57,11 @@ export function createCompileToFunctionFn (compile: Function): Function {
     }
 
     // compile
+    // 进行编译
     const compiled = compile(template, options)
 
     // check compilation errors/tips
+    // 进行打印模板编译的报错
     if (process.env.NODE_ENV !== 'production') {
       if (compiled.errors && compiled.errors.length) {
         if (options.outputSourceRange) {
@@ -78,6 +80,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
           )
         }
       }
+      // 这里是模板编译的一些小提示，虽然不会对渲染造成影响，但是打印出建议的做法
       if (compiled.tips && compiled.tips.length) {
         if (options.outputSourceRange) {
           compiled.tips.forEach(e => tip(e.msg, vm))
@@ -88,10 +91,12 @@ export function createCompileToFunctionFn (compile: Function): Function {
     }
 
     // turn code into functions
+    // 创建这个函数的返回值
     const res = {}
     const fnGenErrors = []
-    res.render = createFunction(compiled.render, fnGenErrors)
+    res.render = createFunction(compiled.render, fnGenErrors)  // 进行将编译后的渲染代码进行创建成为一个函数，并且将错误信息记录下来
     res.staticRenderFns = compiled.staticRenderFns.map(code => {
+      // 将静态渲染方法也进行操作
       return createFunction(code, fnGenErrors)
     })
 
@@ -101,6 +106,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production') {
       if ((!compiled.errors || !compiled.errors.length) && fnGenErrors.length) {
+        // 如果将渲染代码进行创建函数的时候，发生了错误，那么这里就会进行报错
         warn(
           `Failed to generate render function:\n\n` +
           fnGenErrors.map(({ err, code }) => `${err.toString()} in\n\n${code}\n`).join('\n'),

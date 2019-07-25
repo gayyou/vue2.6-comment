@@ -1,12 +1,34 @@
+let b = {
+  template: '<span>这个将不会改变: {{ data }}</span>',
+  data() {
+    return {}
+  },
+  inject: ['index'],
+  props: {
+    data: {
+      type: Boolean
+    }
+  },
+  mounted() {
+    console.log(this);
+  }
+};
+
 
 let a = new Vue({
-  template: '<span>这个将不会改变: {{ getCount }}</span>',
+  provide: {
+    index: 1
+  },
+  template: '<span class="123" data-index="true">这个将不会改变: {{ getCount }}<childs :data="a.name"></childs></span>',
+  components: {
+    childs: b
+  },
   el: '#app',
   data() {
     return {
       c: '123',
       a: {
-        name: '123',
+        name: '',
         age: 123
       },
       b: {
@@ -15,16 +37,18 @@ let a = new Vue({
     }
   },
   watch: {
-
+    // 'a'(newVal) {
+    //   console.log(123)
+    // }
   },
   computed: {
     getCount() {
-      let i = 1;
-      return this.b.age + i;
+      return 222
     }
   },
   mounted() {
-    this.a.name = 1
-
+    this.a.name = ''
+    this.b.age = 11111111
   }
 })
+

@@ -63,31 +63,40 @@ export function initState (vm: Component) {
   }
 }
 
+/**
+ * @description 进行选项的初始化
+ * @param vm
+ * @param propsOptions 子组件选项中对于props的定义（这个是选项合并后的结果）
+ * @variation propsData 这个是通过父组件传进来的props内容
+ */
 function initProps (vm: Component, propsOptions: Object) {
-  const propsData = vm.$options.propsData || {}
-  const props = vm._props = {}
+  const propsData = vm.$options.propsData || {}   // propsData是选项合并后的结果
+  const props = vm._props = {}    // 初始化_props为空对象 {}
   // cache prop keys so that future props updates can iterate using Array
   // instead of dynamic object key enumeration.
-  const keys = vm.$options._propKeys = []
+  const keys = vm.$options._propKeys = []  // 存储选项的键值
   const isRoot = !vm.$parent
   // root instance props should be converted
+  // console.log(propsOptions, propsData)
   if (!isRoot) {
-    toggleObserving(false)
+    // 如果这个是根节点
+    toggleObserving(false)  // 需要对父节点传入的数据进行观察，但是不需要进行深度观察，因为父节点很有可能已经深度观察该数据
   }
   for (const key in propsOptions) {
-    keys.push(key)
-    const value = validateProp(key, propsOptions, propsData, vm)
+    // 进行遍历选型
+    keys.push(key)  // 推进数组里面
+    const value = validateProp(key, propsOptions, propsData, vm)  // 进行props传参的验证，验证子组件使用的参数在父组件中是否传入到子组件中
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== 'production') {
-      const hyphenatedKey = hyphenate(key)
+      const hyphenatedKey = hyphenate(key)  // 将键值所有英文大写转为小写
       if (isReservedAttribute(hyphenatedKey) ||
-          config.isReservedAttr(hyphenatedKey)) {
-        warn(
-          `"${hyphenatedKey}" is a reserved attribute and cannot be used as component prop.`,
-          vm
-        )
-      }
-      defineReactive(props, key, value, () => {
+        config.isReservedAttr(hyphenatedKey)) {
+          warn(
+            `"${hyphenatedKey}" is a reserved attribute and cannot be used as component prop.`,
+            vm
+          )
+        }
+      defineReactive(props, key, value, () => {  // 对props的属性属性进行定义添加观察者依赖
         if (!isRoot && !isUpdatingChildComponent) {
           warn(
             `Avoid mutating a prop directly since the value will be ` +
@@ -99,16 +108,16 @@ function initProps (vm: Component, propsOptions: Object) {
         }
       })
     } else {
-      defineReactive(props, key, value)
+      defineReactive(props, key, value)  // 进行定义添加观察者依赖
     }
     // static props are already proxied on the component's prototype
     // during Vue.extend(). We only need to proxy props defined at
     // instantiation here.
     if (!(key in vm)) {
-      proxy(vm, `_props`, key)
+      proxy(vm, `_props`, key)  // 这是在子组件继承的时候使用
     }
   }
-  toggleObserving(true)
+  toggleObserving(true)  // 开启创建观察
 }
 
 function initData (vm: Component) {
@@ -177,7 +186,6 @@ function initComputed (vm: Component, computed: Object) {
   const isSSR = isServerRendering()
 
   for (const key in computed) {
-    console.log(key)
     const userDef = computed[key]
     const getter = typeof userDef === 'function' ? userDef : userDef.get  // 获取计算目标的getter方法
     if (process.env.NODE_ENV !== 'production' && getter == null) {
@@ -233,7 +241,7 @@ export function defineComputed (
     // TODO 上面的解释就是这个对象是一个共享的，即大家都能用，使用它的原因是要对它进行处理
     sharedPropertyDefinition.get = shouldCache
       ? createComputedGetter(key)  // 如果是浏览器环境下，则创造一个计算的getter方法
-      : createGetterInvoker(userDef)  // 如果是服务端渲染的话，那么就返回
+      : createGetterInvoker(userDef)  // 如果是服务端渲染的话，那么就返回一个userDef组成的函数
     sharedPropertyDefinition.set = noop
   } else {
     sharedPropertyDefinition.get = userDef.get
@@ -243,16 +251,17 @@ export function defineComputed (
       : noop
     sharedPropertyDefinition.set = userDef.set || noop
   }
+
   if (process.env.NODE_ENV !== 'production' &&
     sharedPropertyDefinition.set === noop) {
       sharedPropertyDefinition.set = function () {
         warn(
-          `Computed property "${key}" was assigned to but it has no setter.`,
+          `Computed property "${ key }" was assigned to but it has no setter.`,
           this
         )
       }
   }
-  Object.defineProperty(target, key, sharedPropertyDefinition)  // 对compute目标进行定义
+  Object.defineProperty(target, key, sharedPropertyDefinition)  // 对compute目标进行定义getter和setter方法。
 }
 
 
@@ -262,7 +271,8 @@ function createComputedGetter (key) {
     if (watcher) {
       // 观察者存在的话，就进行判断，并且是不是计算属性，是的话就进行执行添加观察者依赖的操作
       if (watcher.dirty) {
-        // 进行观察者依赖的添加
+        // dirty属性只有在computed中初始化的时候设为true，并且执行完本函数后设为false，也就是说这个依赖的只有一次。
+        // 进本观察者依赖的添加
         watcher.evaluate()
       }
       if (Dep.target) {
@@ -271,7 +281,7 @@ function createComputedGetter (key) {
         // TODO 这个computed属性看似是一个方法，其实到最后会处理成一个
         //  属性，当这个属性被模板征用的时候会被观察者观察到。
         //  所以要进行依赖的添加操作。
-        watcher.depend()
+        watcher.depend()  // 如果其他观察者正在添加依赖的话，那么本观察者的所有依赖数据属性可以进行转移到其他观察者（渲染函数观察者）
       }
       return watcher.value
       // 返回值

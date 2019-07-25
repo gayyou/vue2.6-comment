@@ -21,12 +21,16 @@ const arrayKeys = Object.getOwnPropertyNames(arrayMethods)  //
 /**
  * In some cases we may want to disable observation inside a component's
  * update computation.
+ * 组件内部有时候观察者是不会被阻止添加观察的
  */
 export let shouldObserve: boolean = true
 
 export function toggleObserving (value: boolean) {
   shouldObserve = value
 }
+
+
+
 
 /**
  * Observer class that is attached to each observed
@@ -116,6 +120,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
   }
   let ob: Observer | void
   if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
+    // 如果已经被vue进行观察的话，那么就不需要再进行创建观察者对象了
     ob = value.__ob__
   } else if (
     shouldObserve &&
