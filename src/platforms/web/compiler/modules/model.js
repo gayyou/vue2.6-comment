@@ -2,8 +2,11 @@
 
 /**
  * Expand input[v-model] with dyanmic type bindings into v-if-else chains
+ * 在v-if-else链中扩展input标签的v-model的动态挂载类型
  * Turn this:
  *   <input v-model="data[type]" :type="type">
+ *
+ *
  * into this:
  *   <input v-if="type === 'checkbox'" type="checkbox" v-model="data[type]">
  *   <input v-else-if="type === 'radio'" type="radio" v-model="data[type]">
@@ -23,10 +26,17 @@ import {
   createASTElement
 } from 'compiler/parser/index'
 
+/**
+ * @description 对input标签进行处理
+ * @param el
+ * @param options
+ */
 function preTransformNode (el: ASTElement, options: CompilerOptions) {
   if (el.tag === 'input') {
-    const map = el.attrsMap
+    // 判断是input标签才进行处理
+    const map = el.attrsMap  // 属性map进行指向
     if (!map['v-model']) {
+      // 从这里可以看出这个函数是对双向绑定进行处理的
       return
     }
 

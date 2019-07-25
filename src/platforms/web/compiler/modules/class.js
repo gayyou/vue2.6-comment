@@ -7,6 +7,12 @@ import {
   baseWarn
 } from 'compiler/helpers'
 
+// 这个是对类进行处理
+/**
+ * @description 这个函数对一个标签的类名分成两种情况来进行处理，一种是获取静态的类名，一种是获得动态的类名
+ * @param el
+ * @param options
+ */
 function transformNode (el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
   const staticClass = getAndRemoveAttr(el, 'class')
@@ -25,6 +31,8 @@ function transformNode (el: ASTElement, options: CompilerOptions) {
   if (staticClass) {
     el.staticClass = JSON.stringify(staticClass)
   }
+
+  // 进行获取动态的class值
   const classBinding = getBindingAttr(el, 'class', false /* getStatic */)
   if (classBinding) {
     el.classBinding = classBinding

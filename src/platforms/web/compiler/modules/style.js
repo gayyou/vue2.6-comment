@@ -8,9 +8,15 @@ import {
   baseWarn
 } from 'compiler/helpers'
 
+// 对style进行处理
+/**
+ * @description 这个函数对一个标签的style分成两种情况来进行处理，一种是获取静态的style，也就是不是用变量或者表达是来赋值的，一种是获得动态的类名
+ * @param el
+ * @param options
+ */
 function transformNode (el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
-  const staticStyle = getAndRemoveAttr(el, 'style')
+  const staticStyle = getAndRemoveAttr(el, 'style')  // 进行获取静态的属性，也就是不是通过变量来进行赋值的style值
   if (staticStyle) {
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production') {
@@ -25,9 +31,10 @@ function transformNode (el: ASTElement, options: CompilerOptions) {
         )
       }
     }
-    el.staticStyle = JSON.stringify(parseStyleText(staticStyle))
+    el.staticStyle = JSON.stringify(parseStyleText(staticStyle))  // 字符化返回结果
   }
 
+  // 进行获取动态的style
   const styleBinding = getBindingAttr(el, 'style', false /* getStatic */)
   if (styleBinding) {
     el.styleBinding = styleBinding

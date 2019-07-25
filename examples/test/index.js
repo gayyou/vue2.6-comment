@@ -1,5 +1,5 @@
 let b = {
-  template: '<span>这个将不会改变: {{ data }}</span>',
+  template: '<span data-name="123">这个将不会改变: {{ data }}</span>',
   data() {
     return {}
   },

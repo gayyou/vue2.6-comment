@@ -2,6 +2,10 @@
 
 import { cached, extend, toObject } from 'shared/util'
 
+/**
+ * @description 对style属性进行提取
+ * 处理的结果放到res对象，属性名作为键，属性值作为值，这样很符合css类
+ */
 export const parseStyleText = cached(function (cssText) {
   const res = {}
   const listDelimiter = /;(?![^(]*\))/g

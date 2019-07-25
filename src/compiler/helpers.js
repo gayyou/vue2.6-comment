@@ -185,6 +185,8 @@ export function getAndRemoveAttr (
   name: string,
   removeFromMap?: boolean
 ): ?string {
+  // attrsMap就是这个标签上所有的属性的键值对（属性名作为键、属性值作为值）、
+  // 这个函数的作用就是将这个键值在在属性值上面进行删除
   let val
   if ((val = el.attrsMap[name]) != null) {
     const list = el.attrsList
@@ -196,6 +198,7 @@ export function getAndRemoveAttr (
     }
   }
   if (removeFromMap) {
+    // 从ast节点的属性上map删除这个属性值
     delete el.attrsMap[name]
   }
   return val
