@@ -69,14 +69,12 @@ export function parseHTML (html, options) {
   const canBeLeftOpenTag = options.canBeLeftOpenTag || no
   let index = 0
   let last, lastTag  // lastTag就是一个非一元标签，因为只有一元标签才能进入stack
-  // console.log(options)
-  // console.log( 'start' ,options.start)
-  // console.log('end', options.end)
+
   // 进行解析循环
   while (html) {
     last = html
     // Make sure we're not in a plaintext content element like script/style
-    if (!lastTag || !isPlainTextElement(lastTag)) {  // 如果栈顶元素不存在或者栈顶元素㛮，但不是一个纯文本的标签（textarea, script, style）
+    if (!lastTag || !isPlainTextElement(lastTag)) {  // 如果栈顶元素不存在或者栈顶元素，但不是一个纯文本的标签（textarea, script, style）
       let textEnd = html.indexOf('<')
       if (textEnd === 0) {
         // 文本结束的位置是在0，也就是说明开头就是个标签
@@ -274,6 +272,7 @@ export function parseHTML (html, options) {
     const unary = isUnaryTag(tagName) || !!unarySlash  // 如果是一元标签的话，那么就为true，如果不是一元标签，那么就返回开始标签是否闭合
     const l = match.attrs.length  // 属性的个数
     const attrs = new Array(l)
+    // 在这里之前，attrs就是一个数组，这个数组是通过正则表达式匹配出来的数组，在这里对数组进行遍历，提取正则匹配出来的标签的属性键值
     for (let i = 0; i < l; i++) {
       const args = match.attrs[i]
       // console.log('args', args);

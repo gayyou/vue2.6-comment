@@ -19,13 +19,15 @@ let a = new Vue({
   provide: {
     index: 1
   },
-  template: '<span class="123" data-index="true">这个将不会改变: {{ getCount }}<childs :data="a.name"></childs></span>',
+  template: '<span class="123" :[key]="key2" data-index="true">这个将不会改变: {{ getCount }}<span v-for="(item, key, index) in obj"></span><childs :data="a.name"></childs></span>',
   components: {
     childs: b
   },
   el: '#app',
   data() {
     return {
+      key: 'name',
+      key2: '321',
       c: '123',
       a: {
         name: '',
@@ -34,6 +36,11 @@ let a = new Vue({
       b: {
         age: 321
       },
+      obj: {
+        name: 1,
+        key: 2
+      },
+      arr: [1, 2 , 3]
     }
   },
   watch: {

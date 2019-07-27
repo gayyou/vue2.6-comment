@@ -28,7 +28,7 @@ export const dirRE = process.env.VBIND_PROP_SHORTHAND
 export const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/   // 这个是捕获迭代器的 比如   v-for="obj in a" 的时候，捕获的是  obj in a部分
 export const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/  // 在前面的捕获迭代器的基础上对第一组捕获内容进行分析，比如  v-for="(obj, index) in a" ，
                                                                // 首先由AliasRe进行捕获 obj, index,再由这个来将obj, index分开
-                                                               // 但是如果遇到(obj, key, index) in a 的话，只能匹配到key 和index
+                                                               // 但是如果遇到(obj, key, index) in a 的话，能匹配到key 和index，这是为了后面进行过滤作用
 const stripParensRE = /^\(|\)$/g  // 匹配括号，也就是上面的迭代器的括号进行去除
 const dynamicArgRE = /^\[.*\]$/   // 搜集中括号的内容，无匹配项，也就是包括中括号也被搜集了
 
@@ -108,13 +108,14 @@ export function parse (
   // console.log('post', postTransforms)
 
   delimiters = options.delimiters  // 分隔符
+  // console.log(delimiters)
   const stack = []
   const preserveWhitespace = options.preserveWhitespace !== false  // 是否保留空白
   const whitespaceOption = options.whitespace  // 对于空白选项的配置
   let root
-  let currentParent
-  let inVPre = false
-  let inPre = false
+  let currentParent   // 当前节点的父节点
+  let inVPre = false  // 判断当前检验标签有无v-pre属性
+  let inPre = false   // 判断当前标签是否为pre标签
   let warned = false
 
   function warnOnce (msg, range) {
@@ -126,11 +127,15 @@ export function parse (
 
   // 闭合标签
   function closeElement (element) {
-    trimEndingWhitespace(element)
+    trimEndingWhitespace(element)  // 去掉末尾空白的区域
     if (!inVPre && !element.processed) {
+      // 如果父节点并没有 v-pre 属性并且这个树状节点还没有被processed过，那么就进行processElement
       element = processElement(element, options)
     }
     // tree management
+    // 语法树栈为空，并且当前元素不是根元素，说明根元素并非只有一个。
+    // 因为root从头到尾只有在遇到第一个元素的时候赋值，但是stack可以为空几次。（因为根节点不止一个。并且进行遍历树的时候，在进入节点内部的时候会将父节点进行推进栈）
+    // 只要栈为空，说明到了顶层节点。当顶层节点并不是一开始设定的root的时候，说明顶层节点不止一个
     if (!stack.length && element !== root) {
       // allow root elements with v-if, v-else-if and v-else
       if (root.if && (element.elseif || element.else)) {
@@ -150,17 +155,22 @@ export function parse (
         )
       }
     }
+
+    // 如果当前访问的空间是一个ast的子节点并且不是禁止的子节点的情况下
     if (currentParent && !element.forbidden) {
       if (element.elseif || element.else) {
+        // 对条件进行处理
         processIfConditions(element, currentParent)
       } else {
         if (element.slotScope) {
           // scoped slot
           // keep it in the children list so that v-else(-if) conditions can
           // find it as the prev node.
-          const name = element.slotTarget || '"default"'
-          ;(currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
+          // 如果遇到了scope-slot属性的时候，说明是一个作用域插槽
+          const name = element.slotTarget || '"default"';  // 获取插槽的名字
+          (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element  // 将父容器的的scopedSlots推进本节点，这样父节点就能够访问子节点的数据了
         }
+        // 进行相互绑定
         currentParent.children.push(element)
         element.parent = currentParent
       }
@@ -168,11 +178,15 @@ export function parse (
 
     // final children cleanup
     // filter out scoped slots
+    // 前面已经将作用域插槽放到父节点的属性中了，现在就无需将作用域插槽节点放到子节点中
+    // TODO 如果这里将作用域插槽给去掉，那么怎么定义插槽在子节点中的位置？？？  插槽两个特性：内容由父节点进行定义，位置由子节点进行定义。那么这个位置如何处理
+    // TODO 已知，在这里的时候，作用域插槽的父节点已经指向currentParent
     element.children = element.children.filter(c => !(c: any).slotScope)
     // remove trailing whitespace node again
     trimEndingWhitespace(element)
 
     // check pre state
+    // 闭合标签后，之前存在的状态也要进行复原
     if (element.pre) {
       inVPre = false
     }
@@ -241,7 +255,7 @@ export function parse (
       // check namespace.
       // inherit parent ns if there is one
       // 可以根据代码推测这个ns就是currentParent标签的名字
-      // console.log('space', platformGetTagNamespace(tag))
+      // ns 我目前是这么理解的，就是获得当前容器的父节点的标签名
       const ns = (currentParent && currentParent.ns) || platformGetTagNamespace(tag)  // 如果父节点在的话，那么就获取父节点的标签名字。如果父节点不在的话，那么就真针对于svg、math标签进行获取标签名
       // handle IE svg bug
       /* istanbul ignore if */
@@ -304,7 +318,7 @@ export function parse (
         // 这个标签没有使用v-pre
         processPre(element)  // 如果这个元素存在v-pre属性的话，将这个属性去掉，并且将element.pre设为true
         if (element.pre) {
-          // 如果前面条件满足的话，那么将inVpre设为true，TODO 我的猜测是如果这个为true，那么下面就是针对于存在这个v-pre标签的属性进行处理
+          // 如果前面条件满足的话，那么将inVpre设为true.接下来就是针对于这种情况进行处理
           inVPre = true
         }
       }
@@ -313,7 +327,7 @@ export function parse (
         // 判断平台上这个标签是否是pre标签，如果是的话，就进入了inPre为真的状态
         inPre = true
       }
-      // console.log(processAttrs)
+
       if (inVPre) {
         processRawAttrs(element)
       } else if (!element.processed) {
@@ -326,6 +340,7 @@ export function parse (
       if (!root) {
         root = element
         if (process.env.NODE_ENV !== 'production') {
+          // 进行检验渲染的根节点是否符合有且只有一个并且不能是template
           checkRootConstraints(root)
         }
       }
@@ -356,7 +371,7 @@ export function parse (
       if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
         element.end = end
       }
-      closeElement(element)  // 闭合标签
+      closeElement(element)  // 对于双元标签的话，进行闭合标签的操作
     },
 
     /**
@@ -396,11 +411,12 @@ export function parse (
       const children = currentParent.children
       if (inPre || text.trim()) {
         // 在pre标签或者文字去除两端空格后还是存在的
-        text = isTextTag(currentParent) ? text : decodeHTMLCached(text)  // 如果父容器不是style或者script标签，那么进行编码
+        text = isTextTag(currentParent) ? text : decodeHTMLCached(text)  // 如果父容器不是style或者script标签，那么进行编码.这样做的目的就是为了接下来的内容不会被词法解析器看做是一个标签，从而避免生成语法树节点从而造成错误
       } else if (!children.length) {
         // 父容器的抽象语法树节点不存在字节点的话
         // TODO 这里有点问题
         // remove the whitespace-only node right after an opening tag
+        // 这里要记住，js从来都是传值传参的，基本数据类型的话，也就是copy一份，对象类的话是复制地址后传参。所以这里只是本地修改值
         text = ''
       } else if (whitespaceOption) {
         if (whitespaceOption === 'condense') {
@@ -477,7 +493,7 @@ function processPre (el) {
   }
 }
 
-//
+// attrs用键值对，并且值为字符串显示出来
 function processRawAttrs (el) {
   const list = el.attrsList
   const len = list.length
@@ -495,6 +511,7 @@ function processRawAttrs (el) {
     }
   } else if (!el.pre) {
     // non root node in pre blocks with no attributes
+    // 并没有任何属性
     el.plain = true
   }
 }
@@ -507,6 +524,7 @@ export function processElement (
 
   // determine whether this is a plain element after
   // removing structural attributes
+  // 纯树抽象树结构的定义是以下：没有属性列表、没有key、没有作用域插槽
   element.plain = (
     !element.key &&
     !element.scopedSlots &&
@@ -524,8 +542,12 @@ export function processElement (
   return element
 }
 
+/**
+ * 对于循环渲染的key值的处理策略是不能够放到template标签上面
+ * @param el
+ */
 function processKey (el) {
-  const exp = getBindingAttr(el, 'key')
+  const exp = getBindingAttr(el, 'key')  // 得到 v-bind 或者 : 开头的key属性
   if (exp) {
     if (process.env.NODE_ENV !== 'production') {
       if (el.tag === 'template') {
@@ -534,6 +556,7 @@ function processKey (el) {
           getRawBindingAttr(el, 'key')
         )
       }
+      // 如果是在循环渲染的时候
       if (el.for) {
         const iterator = el.iterator2 || el.iterator1
         const parent = el.parent
@@ -551,6 +574,10 @@ function processKey (el) {
   }
 }
 
+/**
+ * @description 处理策略是判断这个容器上是否使用  v-bind 或者 : 进行绑定的ref，注意，只有v-bind 或 : 才能检测到，否则将不会进行检测
+ * @param el
+ */
 function processRef (el) {
   const ref = getBindingAttr(el, 'ref')
   if (ref) {
@@ -559,12 +586,17 @@ function processRef (el) {
   }
 }
 
+/**
+ * @description 思路是将列表循环渲染的内容进行提取，然后存储到el上面去
+ * @param el 抽象语法树的节点
+ */
 export function processFor (el: ASTElement) {
   let exp
   if ((exp = getAndRemoveAttr(el, 'v-for'))) {
-    const res = parseFor(exp)
+
+    const res = parseFor(exp)  // 返回一个对象，这个对象有alias是迭代值、键、下标。还有被访问的对象
     if (res) {
-      extend(el, res)
+      extend(el, res)  // 将res的内容扩展到el上面去
     } else if (process.env.NODE_ENV !== 'production') {
       warn(
         `Invalid v-for expression: ${exp}`,
@@ -581,28 +613,39 @@ type ForParseResult = {
   iterator2?: string;
 };
 
+/**
+ *
+ * @param exp
+ */
 export function parseFor (exp: string): ?ForParseResult {
-  const inMatch = exp.match(forAliasRE)
+  const inMatch = exp.match(forAliasRE)  // 进行获取迭代正文部分
   if (!inMatch) return
   const res = {}
-  res.for = inMatch[2].trim()
-  const alias = inMatch[1].trim().replace(stripParensRE, '')
-  const iteratorMatch = alias.match(forIteratorRE)
+  res.for = inMatch[2].trim()  // 进行获取被迭代的对象部分
+  const alias = inMatch[1].trim().replace(stripParensRE, '')  // 获取前面内容 in 前面的内容，如果有括号就去除括号
+
+  const iteratorMatch = alias.match(forIteratorRE)   // 对迭代器前面的括号内容进行判断
   if (iteratorMatch) {
-    res.alias = alias.replace(forIteratorRE, '').trim()
-    res.iterator1 = iteratorMatch[1].trim()
+    // 说明迭代器存在不止一个item，还有index等等
+    res.alias = alias.replace(forIteratorRE, '').trim()  // 将获取到的内容只保留第一个下标
+    res.iterator1 = iteratorMatch[1].trim()  // 如果() in obj 括号内有三个选项的话，就是迭代的键值，如果括号只有两个项的话，那么就是迭代下标的名字
     if (iteratorMatch[2]) {
-      res.iterator2 = iteratorMatch[2].trim()
+      res.iterator2 = iteratorMatch[2].trim()  // 一定是迭代下标
     }
   } else {
-    res.alias = alias
+    res.alias = alias  // 迭代value值
   }
   return res
 }
 
+/**
+ * @description 对标签上的v-if-else-else-if进行提取并且放到抽象语法树中
+ * @param el
+ */
 function processIf (el) {
-  const exp = getAndRemoveAttr(el, 'v-if')
+  const exp = getAndRemoveAttr(el, 'v-if')  // 对v-if内容进行处理
   if (exp) {
+    // 如果存在提取内容，给抽象语法树进行添加if属性
     el.if = exp
     addIfCondition(el, {
       exp: exp,
@@ -620,8 +663,9 @@ function processIf (el) {
 }
 
 function processIfConditions (el, parent) {
-  const prev = findPrevElement(parent.children)
+  const prev = findPrevElement(parent.children)  // 找到这个节点前的节点
   if (prev && prev.if) {
+    // 查询结果存在，并且前面的节点有v-if属性的话，那么就将这个v-else节点添加到前面的if节点中，左右elseif的属性
     addIfCondition(prev, {
       exp: el.elseif,
       block: el
@@ -635,6 +679,12 @@ function processIfConditions (el, parent) {
   }
 }
 
+/**
+ * @description 思路很简单，因为这个函数调用的时候还是正在对这棵树进行添加节点，所以当前访问的就是parent.children的最后一个节点，那么前一个就是children.length - 1.
+ * 这里还会对v-if v-else 中间是否有没有条件属性的节点进行判断，如果有的话，就进行忽略
+ * @param children
+ * @returns {*}
+ */
 function findPrevElement (children: Array<any>): ASTElement | void {
   let i = children.length
   while (i--) {
@@ -653,6 +703,7 @@ function findPrevElement (children: Array<any>): ASTElement | void {
   }
 }
 
+// 添加if条件判断筐
 export function addIfCondition (el: ASTElement, condition: ASTIfCondition) {
   if (!el.ifConditions) {
     el.ifConditions = []
@@ -660,6 +711,10 @@ export function addIfCondition (el: ASTElement, condition: ASTIfCondition) {
   el.ifConditions.push(condition)
 }
 
+/**
+ * @description 进行提取once属性
+ * @param el
+ */
 function processOnce (el) {
   const once = getAndRemoveAttr(el, 'v-once')
   if (once != null) {
@@ -667,12 +722,17 @@ function processOnce (el) {
   }
 }
 
+/**
+ * @description 对插槽的父组件中的插槽内容进行处理，插槽可以在template和其他标签上使用
+ * 在template上存在scope，则进行提示，但是不影响使用；如果是其他元素使用作用域插槽的话，并且存在v-for的情况下进行提示
+ * @param el
+ */
 // handle content being passed to a component as slot,
 // e.g. <template slot="xxx">, <div slot-scope="xxx">
 function processSlotContent (el) {
   let slotScope
   if (el.tag === 'template') {
-    slotScope = getAndRemoveAttr(el, 'scope')
+    slotScope = getAndRemoveAttr(el, 'scope')  // 提取scope，如果存在的时候进行把偶偶
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production' && slotScope) {
       warn(
@@ -684,7 +744,7 @@ function processSlotContent (el) {
         true
       )
     }
-    el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope')
+    el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope')  // 但是还是能够进行使用
   } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) {
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production' && el.attrsMap['v-for']) {
@@ -803,6 +863,10 @@ function getSlotName (binding) {
     : { name: `"${name}"`, dynamic: false }
 }
 
+/**
+ * @description 对slot标签进行处理，得到name
+ * @param el
+ */
 // handle <slot/> outlets
 function processSlotOutlet (el) {
   if (el.tag === 'slot') {
@@ -823,11 +887,16 @@ function processComponent (el) {
   if ((binding = getBindingAttr(el, 'is'))) {
     el.component = binding
   }
+  // 判断这个模板是否是内联模板：内联模板可以直接像vuecli那样子放到挂载的html上
   if (getAndRemoveAttr(el, 'inline-template') != null) {
     el.inlineTemplate = true
   }
 }
 
+/**
+ * @variation list list是处理过的参数，name为标签上的属性名、value为标签上的属性值
+ * @param el
+ */
 function processAttrs (el) {
   const list = el.attrsList
   let i, l, name, rawName, value, modifiers, syncGen, isDynamic
@@ -835,24 +904,30 @@ function processAttrs (el) {
     name = rawName = list[i].name
     value = list[i].value
     if (dirRE.test(name)) {
+      // 判断这个属性是否是动态的属性
       // mark element as dynamic
       el.hasBindings = true
       // modifiers
       modifiers = parseModifiers(name.replace(dirRE, ''))
       // support .foo shorthand syntax for the .prop modifier
       if (process.env.VBIND_PROP_SHORTHAND && propBindRE.test(name)) {
+        // 如果属性名是允许使用 name.xxx 进行绑定的，那么就进行处理
         (modifiers || (modifiers = {})).prop = true
         name = `.` + name.slice(1).replace(modifierRE, '')
       } else if (modifiers) {
+        // 过滤掉修改的处理
         name = name.replace(modifierRE, '')
       }
       if (bindRE.test(name)) { // v-bind
+        // v-bind处理
         name = name.replace(bindRE, '')
         value = parseFilters(value)
-        isDynamic = dynamicArgRE.test(name)
+        isDynamic = dynamicArgRE.test(name)     // 判断获得对象的属性是否是动态的，也就是说，用中括号法来进行获取对象的属性
         if (isDynamic) {
+          // 如果是动态的话，那么就中括号处理掉（处理掉首尾部分）
           name = name.slice(1, -1)
         }
+        // 进行检验属性的错误
         if (
           process.env.NODE_ENV !== 'production' &&
           value.trim().length === 0
@@ -965,6 +1040,11 @@ function processAttrs (el) {
   }
 }
 
+/**
+ * @description 处理的策略就是只要一个父容器有循环渲染的话，就返回true
+ * @param el
+ * @returns {boolean}
+ */
 function checkInFor (el: ASTElement): boolean {
   let parent = el
   while (parent) {
@@ -976,9 +1056,14 @@ function checkInFor (el: ASTElement): boolean {
   return false
 }
 
+/**
+ * @description 这个函数是针对于标签上的属性值是可以进行修改的情况的处理
+ * @param name
+ */
 function parseModifiers (name: string): Object | void {
-  const match = name.match(modifierRE)
+  const match = name.match(modifierRE)  // 判断这个标签的属性名是否是可以修改的  比如 :[name]  其中name为变量，这些就是可以修改的属性名
   if (match) {
+    // 如果匹配到了，用散列表进行装起来
     const ret = {}
     match.forEach(m => { ret[m.slice(1)] = true })
     return ret

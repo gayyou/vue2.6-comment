@@ -180,6 +180,13 @@ export function getBindingAttr (
 // doesn't get processed by processAttrs.
 // By default it does NOT remove it from the map (attrsMap) because the map is
 // needed during codegen.
+/**
+ * @description 这个函数的作用就是获取抽象语法树上的attrsList里面的内容，并且作为返回值返回。并且将这个属性从这个抽象语法树上进行删除
+ * @param el
+ * @param name
+ * @param removeFromMap
+ * @returns {*}
+ */
 export function getAndRemoveAttr (
   el: ASTElement,
   name: string,
